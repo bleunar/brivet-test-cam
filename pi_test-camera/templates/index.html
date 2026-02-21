@@ -24,6 +24,7 @@
         <section class="card video-panel" id="video-panel">
             <div class="video-label">
                 <span class="dot"></span> Live
+                <button class="btn-fullscreen" id="fullscreen-btn" type="button" title="Toggle fullscreen">⛶</button>
             </div>
             <div class="card-body">
                 <img id="stream" src="/stream" alt="Camera live feed" />
@@ -198,6 +199,24 @@
                 captureBtn.classList.remove("loading");
                 captureBtn.textContent = "📷  Capture Image";
             }
+        });
+
+        // -- Fullscreen toggle --
+        const fullscreenBtn = document.getElementById("fullscreen-btn");
+        const videoPanel = document.getElementById("video-panel");
+
+        fullscreenBtn.addEventListener("click", () => {
+            if (!document.fullscreenElement) {
+                videoPanel.requestFullscreen().catch(() => {
+                    showToast("⚠ Fullscreen not supported");
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        document.addEventListener("fullscreenchange", () => {
+            fullscreenBtn.textContent = document.fullscreenElement ? "✕" : "⛶";
         });
         }) ();
     </script>
