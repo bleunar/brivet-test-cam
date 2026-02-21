@@ -27,6 +27,7 @@ Open **http://\<pi-ip\>:9000** in a browser.
 | Live video | MJPEG stream via `<img>` tag |
 | Resolution | 640×480 · 1280×720 · 1920×1080 |
 | Frame rate | 1 – 30 fps slider |
+| Image capture | Full-resolution PNG, configurable save directory |
 
 ## API
 
@@ -36,3 +37,4 @@ Open **http://\<pi-ip\>:9000** in a browser.
 | `/stream` | GET | MJPEG video stream |
 | `/settings` | GET | Current settings (JSON) |
 | `/settings` | POST | Apply new settings (JSON body: `{ resolution, framerate }`) |
+| `/capture` | POST | Capture full-res PNG (JSON body: `{ save_dir }`) |

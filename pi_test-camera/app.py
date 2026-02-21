@@ -1,12 +1,16 @@
 """
 Raspberry Pi Camera — FastAPI Web App
 Streams live MJPEG video and allows resolution / frame rate adjustments.
+Supports single-image capture at maximum resolution.
 """
 
 import io
+import os
 import threading
 import time
 import logging
+from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -45,6 +49,9 @@ DEFAULT_RESOLUTION = "1280x720"
 DEFAULT_FRAMERATE  = 15
 MIN_FRAMERATE      = 1
 MAX_FRAMERATE      = 30
+
+DEFAULT_SAVE_DIR   = os.path.expanduser("~/Pictures/brivet/test")
+MAX_CAPTURE_SIZE   = (3280, 2464)   # Pi Camera V2 max
 
 # ---------------------------------------------------------------------------
 # Streaming output adapter
@@ -106,7 +113,39 @@ class CameraManager:
             "available_resolutions": list(RESOLUTION_PRESETS.keys()),
             "min_framerate": MIN_FRAMERATE,
             "max_framerate": MAX_FRAMERATE,
+            "save_dir": DEFAULT_SAVE_DIR,
         }
+
+    def capture_image(self, save_dir: str) -> str:
+        """Capture a full-resolution PNG and return the file path."""
+        with self.lock:
+            # Stop the video stream
+            self.picam2.stop_recording()
+
+            # Switch to still configuration at max resolution
+            still_config = self.picam2.create_still_configuration(
+                main={"size": MAX_CAPTURE_SIZE},
+            )
+            self.picam2.configure(still_config)
+            self.picam2.start()
+
+            # Ensure save directory exists
+            Path(save_dir).mkdir(parents=True, exist_ok=True)
+
+            # Build filename
+            now = datetime.now()
+            filename = now.strftime("brivet_test_%Y-%m-%d_%H-%M-%S.png")
+            filepath = os.path.join(save_dir, filename)
+
+            # Capture
+            self.picam2.capture_file(filepath)
+            logger.info("Image captured — %s", filepath)
+
+            # Return to video streaming
+            self.picam2.stop()
+            self._configure_and_start()
+
+        return filepath
 
     def stream_frames(self):
         """Generator yielding MJPEG frames."""
@@ -170,6 +209,24 @@ async def update_settings(request: Request):
     camera.apply_settings(resolution_key, framerate)
     logger.info("Settings applied — %s @ %d fps", resolution_key, framerate)
     return JSONResponse(camera.get_settings())
+
+
+@app.post("/capture")
+async def capture(request: Request):
+    """Capture a single full-resolution PNG image."""
+    body = await request.json()
+    save_dir = body.get("save_dir", DEFAULT_SAVE_DIR).strip()
+
+    if not save_dir:
+        return JSONResponse({"error": "Save directory cannot be empty"}, status_code=400)
+
+    try:
+        filepath = camera.capture_image(save_dir)
+    except Exception as exc:
+        logger.exception("Capture failed")
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+    return JSONResponse({"path": filepath})
 
 
 # ---------------------------------------------------------------------------

@@ -1,133 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pi Camera — Control Panel</title>
-  <meta name="description" content="Live camera feed and settings for Raspberry Pi Camera" />
-  <link rel="stylesheet" href="/static/style.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pi Camera — Control Panel</title>
+    <meta name="description" content="Live camera feed and settings for Raspberry Pi Camera" />
+    <link rel="stylesheet" href="/static/style.css" />
 </head>
+
 <body>
 
-  <!-- Header -->
-  <header class="header">
-    <h1>Pi Camera</h1>
-    <p>Live feed &amp; controls</p>
-  </header>
+    <!-- Header -->
+    <header class="header">
+        <h1>Pi Camera</h1>
+        <p>Live feed &amp; controls</p>
+    </header>
 
-  <!-- Main layout -->
-  <div class="container">
+    <!-- Main layout -->
+    <div class="container">
 
-    <!-- Video feed -->
-    <section class="card video-panel" id="video-panel">
-      <div class="video-label">
-        <span class="dot"></span> Live
-      </div>
-      <div class="card-body">
-        <img id="stream" src="/stream" alt="Camera live feed" />
-      </div>
-    </section>
+        <!-- Video feed -->
+        <section class="card video-panel" id="video-panel">
+            <div class="video-label">
+                <span class="dot"></span> Live
+            </div>
+            <div class="card-body">
+                <img id="stream" src="/stream" alt="Camera live feed" />
+            </div>
+        </section>
 
-    <!-- Controls -->
-    <aside class="card control-panel">
-      <div class="card-body">
-        <h2>Settings</h2>
+        <!-- Controls -->
+        <aside class="card control-panel">
+            <div class="card-body">
+                <h2>Settings</h2>
 
-        <!-- Resolution -->
-        <div class="field">
-          <label for="resolution">Resolution</label>
-          <select id="resolution">
-            {% for res in settings.available_resolutions %}
-            <option value="{{ res }}" {% if res == settings.resolution %}selected{% endif %}>
-              {{ res }}
-            </option>
-            {% endfor %}
-          </select>
-        </div>
+                <!-- Resolution -->
+                <div class="field">
+                    <label for="resolution">Resolution</label>
+                    <select id="resolution">
+                        {% for res in settings.available_resolutions %}
+                        <option value="{{ res }}" {% if res==settings.resolution %}selected{% endif %}>
+                            {{ res }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-        <!-- Frame rate -->
-        <div class="field">
-          <label for="framerate">Frame Rate</label>
-          <div class="range-wrapper">
-            <input
-              type="range"
-              id="framerate"
-              min="{{ settings.min_framerate }}"
-              max="{{ settings.max_framerate }}"
-              value="{{ settings.framerate }}"
-              step="1"
-            />
-            <span class="range-value" id="framerate-value">{{ settings.framerate }} fps</span>
-          </div>
-        </div>
+                <!-- Frame rate -->
+                <div class="field">
+                    <label for="framerate">Frame Rate</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="framerate" min="{{ settings.min_framerate }}"
+                            max="{{ settings.max_framerate }}" value="{{ settings.framerate }}" step="1" />
+                        <span class="range-value" id="framerate-value">{{ settings.framerate }} fps</span>
+                    </div>
+                </div>
 
-        <!-- Apply -->
-        <button class="btn-apply" id="apply-btn" type="button">
-          Apply Settings
-        </button>
-      </div>
-    </aside>
-  </div>
+                <!-- Apply -->
+                <button class="btn-apply" id="apply-btn" type="button">
+                    Apply Settings
+                </button>
 
-  <!-- Toast notification -->
-  <div class="toast" id="toast"></div>
+                <!-- Divider -->
+                <hr class="divider" />
 
-  <script>
-    (() => {
-      const framerateSlider = document.getElementById("framerate");
-      const framerateValue  = document.getElementById("framerate-value");
-      const applyBtn        = document.getElementById("apply-btn");
-      const streamImg       = document.getElementById("stream");
-      const toast           = document.getElementById("toast");
+                <!-- Capture section -->
+                <h2>Capture</h2>
 
-      // -- Update slider label in real time --
-      framerateSlider.addEventListener("input", () => {
-        framerateValue.textContent = framerateSlider.value + " fps";
-      });
+                <div class="field">
+                    <label for="save-dir">Save Directory</label>
+                    <input type="text" id="save-dir" value="{{ settings.save_dir }}" spellcheck="false" />
+                </div>
 
-      // -- Toast helper --
-      let toastTimer;
-      function showToast(message, durationMs = 3000) {
-        toast.textContent = message;
-        toast.classList.add("show");
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove("show"), durationMs);
-      }
+                <button class="btn-capture" id="capture-btn" type="button">
+                    📷 Capture Image
+                </button>
+            </div>
+        </aside>
+    </div>
 
-      // -- Apply settings --
-      applyBtn.addEventListener("click", async () => {
-        const resolution = document.getElementById("resolution").value;
-        const framerate  = parseInt(framerateSlider.value, 10);
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
 
-        applyBtn.classList.add("loading");
-        applyBtn.textContent = "Applying…";
+    <script>
+        (() => {
+            const framerateSlider = document.getElementById("framerate");
+            const framerateValue = document.getElementById("framerate-value");
+            const applyBtn = document.getElementById("apply-btn");
+            const streamImg = document.getElementById("stream");
+            const toast = document.getElementById("toast");
 
-        try {
-          const res = await fetch("/settings", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ resolution, framerate }),
-          });
+            // -- Update slider label in real time --
+            framerateSlider.addEventListener("input", () => {
+                framerateValue.textContent = framerateSlider.value + " fps";
+            });
 
-          if (!res.ok) {
-            const err = await res.json();
-            showToast("⚠ " + (err.error || "Failed to apply settings"));
-            return;
-          }
+            // -- Toast helper --
+            let toastTimer;
+            function showToast(message, durationMs = 3000) {
+                toast.textContent = message;
+                toast.classList.add("show");
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => toast.classList.remove("show"), durationMs);
+            }
 
-          // Reload the MJPEG stream by resetting the src
-          streamImg.src = "/stream?" + Date.now();
-          showToast("✓ Settings applied");
-        } catch (e) {
-          showToast("⚠ Network error");
-          console.error(e);
-        } finally {
-          applyBtn.classList.remove("loading");
-          applyBtn.textContent = "Apply Settings";
-        }
-      });
-    })();
-  </script>
+            // -- Apply settings --
+            applyBtn.addEventListener("click", async () => {
+                const resolution = document.getElementById("resolution").value;
+                const framerate = parseInt(framerateSlider.value, 10);
+
+                applyBtn.classList.add("loading");
+                applyBtn.textContent = "Applying…";
+
+                try {
+                    const res = await fetch("/settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ resolution, framerate }),
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.json();
+                        showToast("⚠ " + (err.error || "Failed to apply settings"));
+                        return;
+                    }
+
+                    // Reload the MJPEG stream by resetting the src
+                    streamImg.src = "/stream?" + Date.now();
+                    showToast("✓ Settings applied");
+                } catch (e) {
+                    showToast("⚠ Network error");
+                    console.error(e);
+                } finally {
+                    applyBtn.classList.remove("loading");
+                    applyBtn.textContent = "Apply Settings";
+                }
+            });
+
+            // -- Capture image --
+            const captureBtn = document.getElementById("capture-btn");
+            const saveDirInput = document.getElementById("save-dir");
+
+            captureBtn.addEventListener("click", async () => {
+                const save_dir = saveDirInput.value.trim();
+                if (!save_dir) {
+                    showToast("⚠ Save directory cannot be empty");
+                    return;
+                }
+
+                captureBtn.classList.add("loading");
+                captureBtn.textContent = "Capturing…";
+
+                try {
+                    const res = await fetch("/capture", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ save_dir }),
+                    });
+
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        showToast("⚠ " + (data.error || "Capture failed"));
+                        return;
+                    }
+
+                    // Refresh stream after capture (camera restarts)
+                    streamImg.src = "/stream?" + Date.now();
+                    showToast("✓ Saved: " + data.path);
+                } catch (e) {
+                    showToast("⚠ Network error");
+                    console.error(e);
+                } finally {
+                    captureBtn.classList.remove("loading");
+                    captureBtn.textContent = "📷  Capture Image";
+                }
+            });
+        })();
+    </script>
 
 </body>
+
 </html>
