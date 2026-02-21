@@ -37,8 +37,13 @@ templates = Jinja2Templates(directory="templates")
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-RESOLUTION = (1280, 720)
-FRAMERATE = 24
+RESOLUTION_PRESETS = {
+    "640x480":   {"size": (640, 480),   "fps": 45},
+    "1280x720":  {"size": (1280, 720),  "fps": 30},
+    "1920x1080": {"size": (1920, 1080), "fps": 24},
+}
+
+DEFAULT_RESOLUTION = "1280x720"
 DEFAULT_CONFIDENCE = 0.5
 
 # ---------------------------------------------------------------------------
@@ -48,19 +53,41 @@ class CameraManager:
     """Wraps Picamera2 and provides raw frames as numpy arrays."""
 
     def __init__(self):
+        self.lock = threading.Lock()
         self.picam2 = Picamera2()
+        self.resolution_key = DEFAULT_RESOLUTION
+        self._configure_and_start()
+
+    def _configure_and_start(self):
+        preset = RESOLUTION_PRESETS[self.resolution_key]
         config = self.picam2.create_video_configuration(
-            main={"size": RESOLUTION, "format": "RGB888"},
-            controls={"FrameRate": FRAMERATE},
+            main={"size": preset["size"], "format": "BGR888"},
+            controls={"FrameRate": preset["fps"]},
         )
         self.picam2.configure(config)
         self.picam2.start()
-        logger.info("Camera started — %dx%d @ %d fps", *RESOLUTION, FRAMERATE)
+        logger.info("Camera started — %s @ %d fps", self.resolution_key, preset["fps"])
+
+    def apply_resolution(self, resolution_key: str):
+        """Stop, reconfigure, and restart the camera."""
+        with self.lock:
+            self.picam2.stop()
+            self.resolution_key = resolution_key
+            self._configure_and_start()
+
+    def get_settings(self) -> dict:
+        preset = RESOLUTION_PRESETS[self.resolution_key]
+        return {
+            "resolution": self.resolution_key,
+            "fps": preset["fps"],
+            "available_resolutions": {
+                k: v["fps"] for k, v in RESOLUTION_PRESETS.items()
+            },
+        }
 
     def capture_array(self) -> np.ndarray:
         """Return the current frame as a BGR numpy array."""
-        rgb = self.picam2.capture_array()
-        return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        return self.picam2.capture_array()
 
 
 camera = CameraManager()
@@ -128,6 +155,7 @@ async def index(request: Request):
     return templates.TemplateResponse("index.html", {
         "request": request,
         "confidence": detector.confidence_threshold,
+        "settings": camera.get_settings(),
     })
 
 
@@ -164,6 +192,26 @@ async def set_confidence(request: Request):
     detector.confidence_threshold = threshold
     logger.info("Confidence threshold set to %.2f", threshold)
     return JSONResponse({"threshold": threshold})
+
+
+@app.get("/settings")
+async def get_settings():
+    """Return current camera settings."""
+    return JSONResponse(camera.get_settings())
+
+
+@app.post("/settings")
+async def update_settings(request: Request):
+    """Change the camera resolution."""
+    body = await request.json()
+    resolution_key = body.get("resolution", camera.resolution_key)
+
+    if resolution_key not in RESOLUTION_PRESETS:
+        return JSONResponse({"error": f"Unknown resolution: {resolution_key}"}, status_code=400)
+
+    camera.apply_resolution(resolution_key)
+    logger.info("Resolution changed to %s", resolution_key)
+    return JSONResponse(camera.get_settings())
 
 
 # ---------------------------------------------------------------------------

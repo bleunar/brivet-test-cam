@@ -3,6 +3,8 @@ uvicorn[standard]
 picamera2
 Pillow
 jinja2
-opencv-python-headless
 tflite-runtime
-numpy
+numpy<2.0
+# OpenCV: install via system package (sudo apt install python3-opencv)
+# Do NOT use opencv-python-headless here — it requires numpy>=2 which
+# conflicts with picamera2's simplejpeg on Raspberry Pi OS.

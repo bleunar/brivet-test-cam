@@ -42,6 +42,18 @@
                     Enable Detection
                 </button>
 
+                <!-- Resolution -->
+                <div class="field">
+                    <label for="resolution">Resolution</label>
+                    <select id="resolution">
+                        {% for res, fps in settings.available_resolutions.items() %}
+                        <option value="{{ res }}" {% if res==settings.resolution %}selected{% endif %}>
+                            {{ res }} ({{ fps }} fps)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <!-- Confidence threshold -->
                 <div class="field">
                     <label for="confidence">Confidence Threshold</label>
@@ -70,6 +82,7 @@
             const streamImg = document.getElementById("stream");
             const toggleBtn = document.getElementById("toggle-btn");
             const modeLabel = document.getElementById("mode-label");
+            const resolutionSelect = document.getElementById("resolution");
             const confidenceSlider = document.getElementById("confidence");
             const confidenceValue = document.getElementById("confidence-value");
             const detectionList = document.getElementById("detection-list");
@@ -87,25 +100,51 @@
                 toastTimer = setTimeout(() => toast.classList.remove("show"), ms);
             }
 
+            // -- Refresh the stream src --
+            function refreshStream() {
+                const endpoint = detectMode ? "/stream/detect" : "/stream/raw";
+                streamImg.src = endpoint + "?" + Date.now();
+            }
+
             // -- Toggle detection mode --
             toggleBtn.addEventListener("click", () => {
                 detectMode = !detectMode;
 
                 if (detectMode) {
-                    streamImg.src = "/stream/detect?" + Date.now();
                     toggleBtn.textContent = "Disable Detection";
                     toggleBtn.classList.add("active");
                     modeLabel.textContent = "Detection Feed";
                     startPolling();
                     showToast("✓ Detection enabled");
                 } else {
-                    streamImg.src = "/stream/raw?" + Date.now();
                     toggleBtn.textContent = "Enable Detection";
                     toggleBtn.classList.remove("active");
                     modeLabel.textContent = "Raw Feed";
                     stopPolling();
                     clearDetectionList();
                     showToast("✓ Detection disabled");
+                }
+                refreshStream();
+            });
+
+            // -- Resolution change --
+            resolutionSelect.addEventListener("change", async () => {
+                const resolution = resolutionSelect.value;
+                try {
+                    const res = await fetch("/settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ resolution }),
+                    });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        showToast("⚠ " + (err.error || "Failed to change resolution"));
+                        return;
+                    }
+                    refreshStream();
+                    showToast("✓ Resolution: " + resolution);
+                } catch (e) {
+                    showToast("⚠ Network error");
                 }
             });
 

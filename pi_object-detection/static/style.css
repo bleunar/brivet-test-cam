@@ -233,6 +233,31 @@ body {
     letter-spacing: 0.06em;
 }
 
+.field select {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    appearance: none;
+    -webkit-appearance: none;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.875rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color var(--transition);
+}
+
+.field select:focus {
+    border-color: var(--accent);
+}
+
+.field select option {
+    background: #1e1b3a;
+    color: var(--text-primary);
+}
+
 /* ---------- Range slider ---------- */
 .range-wrapper {
     display: flex;
