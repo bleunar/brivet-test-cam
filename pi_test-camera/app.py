@@ -45,10 +45,16 @@ RESOLUTION_PRESETS = {
     "1920x1080": (1920, 1080),
 }
 
+# Per-resolution maximum frame rates
+MAX_FRAMERATE_MAP = {
+    "640x480":   60,
+    "1280x720":  45,
+    "1920x1080": 30,
+}
+
 DEFAULT_RESOLUTION = "1280x720"
 DEFAULT_FRAMERATE  = 15
 MIN_FRAMERATE      = 1
-MAX_FRAMERATE      = 30
 
 DEFAULT_SAVE_DIR   = os.path.expanduser("~/Pictures/brivet/test")
 MAX_CAPTURE_SIZE   = (3280, 2464)   # Pi Camera V2 max
@@ -100,10 +106,11 @@ class CameraManager:
     # -- public API ---------------------------------------------------------
 
     def apply_settings(self, resolution_key: str, framerate: int):
+        max_fps = MAX_FRAMERATE_MAP[resolution_key]
         with self.lock:
             self.picam2.stop_recording()
             self.resolution_key = resolution_key
-            self.framerate = max(MIN_FRAMERATE, min(MAX_FRAMERATE, framerate))
+            self.framerate = max(MIN_FRAMERATE, min(max_fps, framerate))
             self._configure_and_start()
 
     def get_settings(self) -> dict:
@@ -112,7 +119,7 @@ class CameraManager:
             "framerate": self.framerate,
             "available_resolutions": list(RESOLUTION_PRESETS.keys()),
             "min_framerate": MIN_FRAMERATE,
-            "max_framerate": MAX_FRAMERATE,
+            "max_framerate_map": MAX_FRAMERATE_MAP,
             "save_dir": DEFAULT_SAVE_DIR,
         }
 
@@ -200,9 +207,10 @@ async def update_settings(request: Request):
 
     if resolution_key not in RESOLUTION_PRESETS:
         return JSONResponse({"error": f"Unknown resolution: {resolution_key}"}, status_code=400)
-    if not (MIN_FRAMERATE <= framerate <= MAX_FRAMERATE):
+    max_fps = MAX_FRAMERATE_MAP[resolution_key]
+    if not (MIN_FRAMERATE <= framerate <= max_fps):
         return JSONResponse(
-            {"error": f"Framerate must be between {MIN_FRAMERATE} and {MAX_FRAMERATE}"},
+            {"error": f"Framerate must be between {MIN_FRAMERATE} and {max_fps} for {resolution_key}"},
             status_code=400,
         )
 

@@ -26,7 +26,7 @@ Open **http://\<pi-ip\>:9000** in a browser.
 |---------|---------|
 | Live video | MJPEG stream via `<img>` tag |
 | Resolution | 640×480 · 1280×720 · 1920×1080 |
-| Frame rate | 1 – 30 fps slider |
+| Frame rate | 1–60 fps (max depends on resolution: 640×480→60, 720p→45, 1080p→30) |
 | Image capture | Full-resolution PNG, configurable save directory |
 
 ## API
