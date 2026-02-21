@@ -87,7 +87,8 @@ class CameraManager:
 
     def capture_array(self) -> np.ndarray:
         """Return the current frame as a BGR numpy array."""
-        return self.picam2.capture_array()
+        frame = self.picam2.capture_array()
+        return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
 
 camera = CameraManager()
