@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+picamera2
+Pillow
+jinja2
+opencv-python-headless
+tflite-runtime
+numpy
