@@ -1,0 +1,5 @@
+fastapi
+uvicorn[standard]
+picamera2
+Pillow
+jinja2

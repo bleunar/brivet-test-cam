@@ -1,0 +1,323 @@
+/* ===================================================================
+   Pi Camera Control Panel — Stylesheet
+   =================================================================== */
+
+/* ---------- Imports ---------- */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+/* ---------- Custom properties ---------- */
+:root {
+  --bg-gradient-start: #0f0c29;
+  --bg-gradient-mid:   #302b63;
+  --bg-gradient-end:   #24243e;
+
+  --glass-bg:      rgba(255, 255, 255, 0.06);
+  --glass-border:  rgba(255, 255, 255, 0.12);
+  --glass-shadow:  0 8px 32px rgba(0, 0, 0, 0.45);
+
+  --accent:        #7c5cfc;
+  --accent-hover:  #9b82ff;
+  --accent-glow:   rgba(124, 92, 252, 0.35);
+
+  --text-primary:   #f0eef6;
+  --text-secondary: #a8a3bf;
+
+  --radius:  16px;
+  --radius-sm: 10px;
+
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------- Reset & base ---------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-mid), var(--bg-gradient-end));
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+}
+
+/* ---------- Header ---------- */
+.header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.header h1 {
+  font-weight: 700;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header p {
+  margin-top: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* ---------- Layout ---------- */
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  max-width: 1200px;
+  width: 100%;
+}
+
+/* ---------- Glass card ---------- */
+.card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- Video panel ---------- */
+.video-panel {
+  flex: 1 1 640px;
+  max-width: 800px;
+}
+
+.video-panel .card-body {
+  padding: 0.5rem;
+}
+
+.video-panel img,
+.video-panel video {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+.video-label {
+  padding: 0.65rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.video-label .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+/* ---------- Control panel ---------- */
+.control-panel {
+  flex: 0 1 320px;
+  min-width: 280px;
+}
+
+.control-panel .card-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.control-panel h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: -0.25rem;
+}
+
+/* ---------- Form fields ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.field label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.field select,
+.field input[type="range"] {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.field select {
+  padding: 0.6rem 0.85rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.875rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+
+.field select:focus {
+  border-color: var(--accent);
+}
+
+.field select option {
+  background: #1e1b3a;
+  color: var(--text-primary);
+}
+
+/* ---------- Range slider ---------- */
+.range-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+input[type="range"] {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  border: 2px solid var(--text-primary);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  border: 2px solid var(--text-primary);
+}
+
+.range-value {
+  font-size: 0.8rem;
+  color: var(--accent-hover);
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ---------- Apply button ---------- */
+.btn-apply {
+  padding: 0.7rem 1.25rem;
+  background: linear-gradient(135deg, var(--accent), #6d28d9);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.btn-apply:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.btn-apply:active {
+  transform: scale(0.97);
+}
+
+.btn-apply.loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* ---------- Status toast ---------- */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: rgba(30, 27, 58, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+  z-index: 999;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .container {
+    flex-direction: column;
+    align-items: center;
+  }
+  .video-panel,
+  .control-panel {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}
