@@ -1,6 +1,11 @@
 # Model files go here.
-# Copy the following 4 files from your training output into this directory:
-#   - metadata.yaml
-#   - model.ncnn.bin
-#   - model.ncnn.param
-#   - model_ncnn.py
+# Create a subdirectory called "waste_ncnn_model" and copy the 4 model files into it:
+#
+#   models/
+#   └── waste_ncnn_model/
+#       ├── metadata.yaml
+#       ├── model.ncnn.bin
+#       ├── model.ncnn.param
+#       └── model_ncnn.py
+#
+# The directory MUST end with "_ncnn_model" for ultralytics to detect the format.

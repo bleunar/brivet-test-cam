@@ -10,15 +10,18 @@ A FastAPI web app for real-time waste detection (Paper / Plastic) using a custom
 
 ## Model Setup
 
-Copy the 4 model files from your training output into the `models/` directory:
+Copy the 4 model files from your training output into `models/waste_ncnn_model/`:
 
 ```
 models/
-├── metadata.yaml
-├── model.ncnn.bin
-├── model.ncnn.param
-└── model_ncnn.py
+└── waste_ncnn_model/
+    ├── metadata.yaml
+    ├── model.ncnn.bin
+    ├── model.ncnn.param
+    └── model_ncnn.py
 ```
+
+> **Important:** The directory must end with `_ncnn_model` for ultralytics to recognize the NCNN format.
 
 ## Quick Start
 

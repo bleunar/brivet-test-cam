@@ -9,7 +9,7 @@ import numpy as np
 from ultralytics import YOLO
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
-MODEL_PATH = os.path.join(MODELS_DIR, "model.ncnn.param")
+MODEL_PATH = os.path.join(MODELS_DIR, "waste_ncnn_model")
 
 # Class-specific colours (BGR for OpenCV)
 CLASS_COLORS = {
