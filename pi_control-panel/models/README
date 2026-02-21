@@ -1,0 +1,6 @@
+# Model files go here.
+# Copy the following 4 files from your training output into this directory:
+#   - metadata.yaml
+#   - model.ncnn.bin
+#   - model.ncnn.param
+#   - model_ncnn.py

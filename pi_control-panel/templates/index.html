@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Waste Detection — Control Panel</title>
+    <meta name="description" content="Live waste detection (Paper / Plastic) using YOLOv8 NCNN on Raspberry Pi" />
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <h1>Waste Detection</h1>
+        <p>YOLOv8 NCNN &middot; Paper &amp; Plastic</p>
+    </header>
+
+    <!-- Main layout -->
+    <div class="container">
+
+        <!-- Video feed -->
+        <section class="card video-panel" id="video-panel">
+            <div class="video-label">
+                <span class="dot"></span>
+                <span id="mode-label">Raw Feed</span>
+                <button class="btn-fullscreen" id="fullscreen-btn" type="button" title="Toggle fullscreen">⛶</button>
+            </div>
+            <div class="card-body">
+                <img id="stream" src="/stream/raw" alt="Camera live feed" />
+            </div>
+        </section>
+
+        <!-- Controls -->
+        <aside class="card control-panel">
+            <div class="card-body">
+                <h2>Controls</h2>
+
+                <!-- Detection toggle -->
+                <button class="btn-toggle" id="toggle-btn" type="button">
+                    Enable Detection
+                </button>
+
+                <!-- Resolution -->
+                <div class="field">
+                    <label for="resolution">Resolution</label>
+                    <select id="resolution">
+                        {% for res, fps in settings.available_resolutions.items() %}
+                        <option value="{{ res }}" {% if res==settings.resolution %}selected{% endif %}>
+                            {{ res }} ({{ fps }} fps)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Confidence threshold -->
+                <div class="field">
+                    <label for="confidence">Confidence Threshold</label>
+                    <div class="range-wrapper">
+                        <input type="range" id="confidence" min="0.1" max="1.0" value="{{ confidence }}" step="0.05" />
+                        <span class="range-value" id="confidence-value">{{ '%.0f' | format(confidence * 100) }}%</span>
+                    </div>
+                </div>
+
+                <hr class="divider" />
+
+                <!-- Detected objects -->
+                <h2>Detected Objects</h2>
+                <ul class="detection-list" id="detection-list">
+                    <li class="no-detections">No detections yet</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        (() => {
+            const streamImg = document.getElementById("stream");
+            const toggleBtn = document.getElementById("toggle-btn");
+            const modeLabel = document.getElementById("mode-label");
+            const resolutionSelect = document.getElementById("resolution");
+            const confidenceSlider = document.getElementById("confidence");
+            const confidenceValue = document.getElementById("confidence-value");
+            const detectionList = document.getElementById("detection-list");
+            const toast = document.getElementById("toast");
+
+            let detectMode = false;
+            let pollInterval = null;
+
+            // -- Toast helper --
+            let toastTimer;
+            function showToast(msg, ms = 3000) {
+                toast.textContent = msg;
+                toast.classList.add("show");
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => toast.classList.remove("show"), ms);
+            }
+
+            // -- Refresh stream --
+            function refreshStream() {
+                const endpoint = detectMode ? "/stream/detect" : "/stream/raw";
+                streamImg.src = endpoint + "?" + Date.now();
+            }
+
+            // -- Toggle detection --
+            toggleBtn.addEventListener("click", () => {
+                detectMode = !detectMode;
+                if (detectMode) {
+                    toggleBtn.textContent = "Disable Detection";
+                    toggleBtn.classList.add("active");
+                    modeLabel.textContent = "Detection Feed";
+                    startPolling();
+                    showToast("✓ Detection enabled");
+                } else {
+                    toggleBtn.textContent = "Enable Detection";
+                    toggleBtn.classList.remove("active");
+                    modeLabel.textContent = "Raw Feed";
+                    stopPolling();
+                    clearDetectionList();
+                    showToast("✓ Detection disabled");
+                }
+                refreshStream();
+            });
+
+            // -- Resolution change --
+            resolutionSelect.addEventListener("change", async () => {
+                const resolution = resolutionSelect.value;
+                try {
+                    const res = await fetch("/settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ resolution }),
+                    });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        showToast("⚠ " + (err.error || "Failed to change resolution"));
+                        return;
+                    }
+                    refreshStream();
+                    showToast("✓ Resolution: " + resolution);
+                } catch (e) {
+                    showToast("⚠ Network error");
+                }
+            });
+
+            // -- Confidence slider --
+            confidenceSlider.addEventListener("input", () => {
+                confidenceValue.textContent = Math.round(confidenceSlider.value * 100) + "%";
+            });
+
+            confidenceSlider.addEventListener("change", async () => {
+                try {
+                    await fetch("/confidence", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ threshold: parseFloat(confidenceSlider.value) }),
+                    });
+                    showToast("✓ Threshold: " + Math.round(confidenceSlider.value * 100) + "%");
+                } catch (e) {
+                    showToast("⚠ Failed to update threshold");
+                }
+            });
+
+            // -- Polling detections --
+            function startPolling() {
+                stopPolling();
+                pollInterval = setInterval(fetchDetections, 1000);
+                fetchDetections();
+            }
+            function stopPolling() {
+                if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+            }
+
+            async function fetchDetections() {
+                try {
+                    const res = await fetch("/detections");
+                    const data = await res.json();
+                    renderDetections(data.detections || []);
+                } catch (e) { /* ignore */ }
+            }
+
+            function renderDetections(dets) {
+                detectionList.innerHTML = "";
+                if (dets.length === 0) {
+                    detectionList.innerHTML = '<li class="no-detections">No objects detected</li>';
+                    return;
+                }
+                dets.sort((a, b) => b.confidence - a.confidence);
+                for (const det of dets) {
+                    const pct = Math.round(det.confidence * 100);
+                    const cls = det.label.toLowerCase();
+                    const li = document.createElement("li");
+                    li.className = "detection-item";
+                    li.innerHTML = `
+                        <div class="det-header">
+                            <span class="det-label ${cls}">${det.label}</span>
+                            <span class="det-score">${pct}%</span>
+                        </div>
+                        <div class="confidence-bar">
+                            <div class="confidence-bar-fill" style="width:${pct}%"></div>
+                        </div>
+                    `;
+                    detectionList.appendChild(li);
+                }
+            }
+
+            function clearDetectionList() {
+                detectionList.innerHTML = '<li class="no-detections">No detections yet</li>';
+            }
+
+            // -- Fullscreen --
+            const fullscreenBtn = document.getElementById("fullscreen-btn");
+            const videoPanel = document.getElementById("video-panel");
+            fullscreenBtn.addEventListener("click", () => {
+                if (!document.fullscreenElement) {
+                    videoPanel.requestFullscreen().catch(() => showToast("⚠ Fullscreen not supported"));
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+            document.addEventListener("fullscreenchange", () => {
+                fullscreenBtn.textContent = document.fullscreenElement ? "✕" : "⛶";
+            });
+        })();
+    </script>
+
+</body>
+
+</html>

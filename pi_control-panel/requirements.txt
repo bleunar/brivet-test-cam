@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+picamera2
+Pillow
+jinja2
+ultralytics
+numpy<2.0
+# OpenCV: install via system package (sudo apt install python3-opencv)
+# Do NOT use opencv-python-headless here — it conflicts with picamera2.
