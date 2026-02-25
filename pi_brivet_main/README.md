@@ -49,8 +49,11 @@ cd pi_brivet_main
 
 ### 2. Create Virtual Environment
 
+> **Important:** The `--system-site-packages` flag is **required** so that the venv can access
+> system-installed packages like `libcamera` and `picamera2`, which are not available via pip.
+
 ```bash
-python -m venv venv
+python -m venv --system-site-packages venv
 source venv/bin/activate
 ```
 
@@ -59,6 +62,13 @@ source venv/bin/activate
 ```bash
 pip install -r requirements.txt
 ```
+
+> **Note:** If you encounter a `numpy.dtype size changed` error on startup, the system
+> `numpy` and `simplejpeg` packages are out of sync. Upgrade both inside the venv:
+>
+> ```bash
+> pip install --upgrade numpy simplejpeg
+> ```
 
 ### 4. Place Your ONNX Model
 
