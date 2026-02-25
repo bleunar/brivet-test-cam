@@ -31,7 +31,7 @@ def _load_model():
             )
         logger.info("Loading YOLO model from %s ...", MODEL_PATH)
         _detection_model = AutoDetectionModel.from_pretrained(
-            model_type="yolov8onnx",
+            model_type="yolov8",
             model_path=str(MODEL_PATH),
             confidence_threshold=DEFAULT_CONFIDENCE,
             device="cpu",
