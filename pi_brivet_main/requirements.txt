@@ -5,5 +5,8 @@ sqlalchemy
 ultralytics
 sahi
 opencv-python-headless
-pillow
+pillow>=10.1.0
 python-multipart
+numpy>=1.24
+simplejpeg
+scikit-image
