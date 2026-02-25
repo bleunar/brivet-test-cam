@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+picamera2
+sqlalchemy
+ultralytics
+sahi
+opencv-python-headless
+pillow
+python-multipart

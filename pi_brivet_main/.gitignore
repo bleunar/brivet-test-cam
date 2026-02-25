@@ -1,0 +1,30 @@
+# Pi Brivet — .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Data (runtime)
+data/
+/dev/shm/brivet/
+
+# Model (user-supplied)
+model/*.onnx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
