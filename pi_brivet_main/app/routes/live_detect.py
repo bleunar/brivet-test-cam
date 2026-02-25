@@ -59,8 +59,11 @@ def _live_detection_generator():
 
     while _state.active:
         try:
-            # Grab a frame from the main camera stream (BGR888 format)
+            # Grab a frame from the main camera stream
             frame = camera_manager.capture_main_frame_array()
+
+            # Picamera2 array output needs R/B swap for correct OpenCV colors
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
             # Run YOLO detection
             annotated, count = run_live_detection(frame, _state.confidence)
