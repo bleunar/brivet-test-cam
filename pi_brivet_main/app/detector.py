@@ -7,9 +7,13 @@ import os
 import time
 from pathlib import Path
 
+# Prevent ultralytics from auto-updating packages
+os.environ["YOLO_VERBOSE"] = "false"
+
 import cv2
 from sahi import AutoDetectionModel
 from sahi.predict import get_sliced_prediction
+from ultralytics import YOLO
 
 from app.config import CAPTURES_DIR, MODEL_PATH, DEFAULT_CONFIDENCE, DEFAULT_SLICES
 
@@ -30,9 +34,13 @@ def _load_model():
                 "Place your .onnx file in the model/ directory."
             )
         logger.info("Loading YOLO model from %s ...", MODEL_PATH)
+
+        # Load via ultralytics with explicit task to avoid guessing
+        yolo_model = YOLO(str(MODEL_PATH), task="detect")
+
         _detection_model = AutoDetectionModel.from_pretrained(
             model_type="yolov8",
-            model_path=str(MODEL_PATH),
+            model=yolo_model,
             confidence_threshold=DEFAULT_CONFIDENCE,
             device="cpu",
         )
