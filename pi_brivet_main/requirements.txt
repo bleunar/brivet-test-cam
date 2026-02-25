@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
-picamera2
+# picamera2 is provided by the system (apt) — do NOT install via pip
 sqlalchemy
 ultralytics
 sahi
