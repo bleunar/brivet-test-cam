@@ -11,7 +11,6 @@ import threading
 import time
 
 from picamera2 import Picamera2
-from libcamera import controls as libcamera_controls
 
 from app.config import (
     PREVIEW_WIDTH,
@@ -49,7 +48,6 @@ class CameraManager:
             display="lores",
         )
         self._camera.configure(config)
-        self._camera.set_controls({"AfMode": libcamera_controls.AfModeEnum.Continuous})
         self._camera.start()
 
         self._running = True
