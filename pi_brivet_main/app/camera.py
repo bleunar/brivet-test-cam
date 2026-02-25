@@ -71,7 +71,7 @@ class CameraManager:
     def _apply_config(self, main_w: int, main_h: int):
         """Apply camera configuration with the given main stream resolution."""
         config = self._camera.create_still_configuration(
-            main={"size": (main_w, main_h), "format": "RGB888"},
+            main={"size": (main_w, main_h), "format": "BGR888"},
             lores={"size": (PREVIEW_WIDTH, PREVIEW_HEIGHT), "format": "YUV420"},
             display="lores",
         )
