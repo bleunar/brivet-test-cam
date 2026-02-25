@@ -7,6 +7,8 @@ let currentMode = "manual";
 let pollInterval = null;
 let historyPage = 1;
 let pendingSettings = null; // buffered for SAHI warning confirmation
+let liveDetectActive = false;
+let liveStatusInterval = null;
 
 // ── DOM Refs ──────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -430,4 +432,132 @@ function showToast(message, type = "info") {
         toast.style.transform = "translateX(100%)";
         setTimeout(() => toast.remove(), 300);
     }, 4000);
+}
+
+
+// ── Live Object Detection ─────────────────────────────────────────────
+
+async function toggleLiveDetection() {
+    if (liveDetectActive) {
+        await stopLiveDetection();
+    } else {
+        await startLiveDetection();
+    }
+}
+
+async function startLiveDetection() {
+    const btn = $("btnLiveToggle");
+    btn.disabled = true;
+
+    try {
+        // Send settings first
+        const confidence = parseInt($("liveConfidence").value, 10) / 100;
+        const resolution = $("liveResolution").value;
+
+        await fetch("/api/live/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ confidence, resolution }),
+        });
+
+        // Start live detection
+        const res = await fetch("/api/live/start", { method: "POST" });
+        const data = await res.json();
+
+        if (data.status === "ok") {
+            liveDetectActive = true;
+
+            // Switch feed source to live detection stream
+            feedImage.src = "/api/live/feed?" + Date.now();
+
+            // Update UI
+            $("liveToggleText").textContent = "Stop Live Detection";
+            btn.classList.add("btn--active-danger");
+            $("detectBadge").classList.remove("hidden");
+            $("feedStats").classList.remove("hidden");
+
+            // Start polling live status
+            liveStatusInterval = setInterval(pollLiveStatus, 1000);
+
+            showToast("Live detection started!", "success");
+        } else {
+            showToast(data.message || "Failed to start.", "error");
+        }
+    } catch (err) {
+        showToast("Network error: " + err.message, "error");
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function stopLiveDetection() {
+    const btn = $("btnLiveToggle");
+    btn.disabled = true;
+
+    try {
+        await fetch("/api/live/stop", { method: "POST" });
+
+        liveDetectActive = false;
+
+        // Switch feed back to normal preview
+        feedImage.src = "/api/feed?" + Date.now();
+
+        // Update UI
+        $("liveToggleText").textContent = "Start Live Detection";
+        btn.classList.remove("btn--active-danger");
+        $("detectBadge").classList.add("hidden");
+        $("feedStats").classList.add("hidden");
+
+        // Stop polling
+        if (liveStatusInterval) {
+            clearInterval(liveStatusInterval);
+            liveStatusInterval = null;
+        }
+
+        showToast("Live detection stopped.", "info");
+    } catch (err) {
+        showToast("Error stopping live detection.", "error");
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function pollLiveStatus() {
+    if (!liveDetectActive) return;
+    try {
+        const res = await fetch("/api/live/status");
+        const data = await res.json();
+        $("statFps").textContent = data.fps + " FPS";
+        $("statObjects").textContent = data.object_count + " object" + (data.object_count !== 1 ? "s" : "");
+    } catch { /* ignore */ }
+}
+
+function onLiveConfidenceChange(val) {
+    $("liveConfidenceValue").textContent = val + "%";
+
+    // Apply immediately if live detection is active
+    if (liveDetectActive) {
+        fetch("/api/live/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ confidence: parseInt(val, 10) / 100 }),
+        }).catch(() => { });
+    }
+}
+
+async function onLiveResolutionChange(val) {
+    if (!liveDetectActive) return; // Will be applied on start
+
+    showToast("Changing resolution… feed will briefly pause.", "info");
+    try {
+        await fetch("/api/live/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ resolution: val }),
+        });
+        // Reconnect the feed (new resolution)
+        feedImage.src = "/api/live/feed?" + Date.now();
+    } catch (err) {
+        showToast("Failed to change resolution.", "error");
+    }
 }

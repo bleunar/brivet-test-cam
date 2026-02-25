@@ -53,11 +53,13 @@ from app.routes.feed import router as feed_router
 from app.routes.capture import router as capture_router
 from app.routes.history import router as history_router
 from app.routes.settings import router as settings_router
+from app.routes.live_detect import router as live_router
 
 app.include_router(feed_router)
 app.include_router(capture_router)
 app.include_router(history_router)
 app.include_router(settings_router)
+app.include_router(live_router)
 
 # ── Static Files & SPA ────────────────────────────────────────────────
 

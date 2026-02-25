@@ -1,5 +1,5 @@
 """
-YOLOv8 + SAHI object detection engine.
+YOLOv8 + SAHI object detection engine, with live detection support.
 """
 
 import logging
@@ -11,6 +11,7 @@ from pathlib import Path
 os.environ["YOLO_VERBOSE"] = "false"
 
 import cv2
+import numpy as np
 from sahi import AutoDetectionModel
 from sahi.predict import get_sliced_prediction
 from ultralytics import YOLO
@@ -21,34 +22,41 @@ logger = logging.getLogger(__name__)
 
 # ── Model Loading ──────────────────────────────────────────────────────
 
-_detection_model: AutoDetectionModel | None = None
+_yolo_model: YOLO | None = None
+_sahi_model: AutoDetectionModel | None = None
 
 
-def _load_model():
-    """Load the ONNX model via SAHI's AutoDetectionModel (lazy singleton)."""
-    global _detection_model
-    if _detection_model is None:
+def _load_yolo() -> YOLO:
+    """Load the raw YOLO model (lazy singleton)."""
+    global _yolo_model
+    if _yolo_model is None:
         if not MODEL_PATH.exists():
             raise FileNotFoundError(
                 f"Model file not found at {MODEL_PATH}. "
                 "Place your .onnx file in the model/ directory."
             )
         logger.info("Loading YOLO model from %s ...", MODEL_PATH)
+        _yolo_model = YOLO(str(MODEL_PATH), task="detect")
+        logger.info("YOLO model loaded successfully.")
+    return _yolo_model
 
-        # Load via ultralytics with explicit task to avoid guessing
-        yolo_model = YOLO(str(MODEL_PATH), task="detect")
 
-        _detection_model = AutoDetectionModel.from_pretrained(
+def _load_sahi_model() -> AutoDetectionModel:
+    """Load the SAHI-wrapped model (lazy singleton, reuses YOLO instance)."""
+    global _sahi_model
+    if _sahi_model is None:
+        yolo = _load_yolo()
+        _sahi_model = AutoDetectionModel.from_pretrained(
             model_type="yolov8",
-            model=yolo_model,
+            model=yolo,
             confidence_threshold=DEFAULT_CONFIDENCE,
             device="cpu",
         )
-        logger.info("Model loaded successfully.")
-    return _detection_model
+        logger.info("SAHI model wrapper loaded.")
+    return _sahi_model
 
 
-# ── Detection ──────────────────────────────────────────────────────────
+# ── SAHI Detection (for capture mode) ─────────────────────────────────
 
 
 def run_detection(
@@ -67,7 +75,7 @@ def run_detection(
     Returns:
         dict with keys: object_count, image_filename, duration_ms
     """
-    model = _load_model()
+    model = _load_sahi_model()
     model.confidence_threshold = confidence
 
     logger.info(
@@ -103,10 +111,8 @@ def run_detection(
         score = pred.score.value
         label = pred.category.name or "Plastic Bottle"
 
-        # Draw bounding box
         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 3)
 
-        # Draw label background
         text = f"{label} {score:.0%}"
         (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
         cv2.rectangle(image, (x1, y1 - th - baseline - 8), (x1 + tw + 8, y1), (0, 255, 0), -1)
@@ -135,3 +141,50 @@ def run_detection(
         "image_filename": filename,
         "duration_ms": duration_ms,
     }
+
+
+# ── Live Detection (no SAHI, direct YOLO) ─────────────────────────────
+
+
+def run_live_detection(
+    frame: np.ndarray,
+    confidence: float = DEFAULT_CONFIDENCE,
+) -> tuple[np.ndarray, int]:
+    """
+    Run direct YOLO inference on a frame (no SAHI, no file I/O).
+
+    Args:
+        frame: BGR numpy array from the camera.
+        confidence: Minimum confidence threshold.
+
+    Returns:
+        (annotated_frame, object_count) tuple.
+    """
+    model = _load_yolo()
+
+    results = model.predict(frame, conf=confidence, verbose=False)
+
+    object_count = 0
+    for result in results:
+        boxes = result.boxes
+        if boxes is None:
+            continue
+
+        for box in boxes:
+            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+            score = float(box.conf[0])
+            cls_id = int(box.cls[0])
+            label = result.names.get(cls_id, "Object")
+
+            # Draw bounding box (green)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+            # Draw label background
+            text = f"{label} {score:.0%}"
+            (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            cv2.rectangle(frame, (x1, y1 - th - baseline - 6), (x1 + tw + 6, y1), (0, 255, 0), -1)
+            cv2.putText(frame, text, (x1 + 3, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+
+            object_count += 1
+
+    return frame, object_count
